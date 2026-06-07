@@ -10,5 +10,19 @@
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
   "connectionReferences": {},
-  "databaseReferences": {}
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "assignments": {
+          "entitySetName": "poce_assignments",
+          "logicalName": "poce_assignment"
+        },
+        "vehicles": {
+          "entitySetName": "poce_vehicles",
+          "logicalName": "poce_vehicle"
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
 }
