@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "appId": "22797879-4525-4332-8d10-710697168ab7",
+  "appDisplayName": "PowerApps is dead",
+  "region": "prod",
+  "environmentId": "d1dbbeb9-2fb5-edcb-9dc4-4476130a1753",
+  "description": " ",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {}
+}
