@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Persona, PersonaSize, Stack, PrimaryButton, DefaultButton, Text } from '@fluentui/react'
 import { Poce_assignmentsService } from '../generated/services/Poce_assignmentsService'
 import { Poce_vehiclesService } from '../generated/services/Poce_vehiclesService'
@@ -34,6 +35,7 @@ const statusLabel = (value: string | number | undefined, map: Record<string, str
 const VW_BLUE = '#002733'
 
 export const HomePage: React.FC = () => {
+  const navigate = useNavigate()
   const [vehicles, setVehicles] = useState<DashboardVehicle[]>([])
   const [assignments, setAssignments] = useState<DashboardAssignment[]>([])
   const [loading, setLoading] = useState(true)
@@ -121,8 +123,8 @@ export const HomePage: React.FC = () => {
       </Stack>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <PrimaryButton text="Assign Vehicle" onClick={() => alert('Assign flow not implemented')} />
-        <DefaultButton text="View Assignments" onClick={() => alert('Navigate to assignments')} />
+        <PrimaryButton text="Assign Vehicle" onClick={() => navigate('/assign')} />
+        <DefaultButton text="View Assignments" onClick={() => navigate('/assignments')} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 12 }}>
