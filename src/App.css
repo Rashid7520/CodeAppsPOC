@@ -40,3 +40,46 @@
 .read-the-docs {
   color: #888;
 }
+
+/* New hero styles */
+.hero {
+  padding: 2rem 0 1.5rem;
+}
+.hero .logos {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  align-items: center;
+}
+.hero h1 {
+  margin: 0.5rem 0 0;
+  font-size: 2rem;
+}
+.subtitle {
+  color: #666;
+  margin-top: 0.25rem;
+}
+.controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.controls input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+.greeting {
+  margin-top: 0.75rem;
+  color: #444;
+}
+
+@media (max-width: 600px) {
+  .hero .logos {
+    gap: 0.5rem;
+  }
+  .logo {
+    height: 4em;
+  }
+}
