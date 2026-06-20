@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Text, PrimaryButton, DefaultButton, Spinner, DetailsList, DetailsListLayoutMode, SelectionMode, MessageBar, MessageBarType, Link, Stack } from '@fluentui/react'
+import { PrimaryButton, DefaultButton, Spinner, SpinnerSize, DetailsList, DetailsListLayoutMode, SelectionMode, MessageBar, MessageBarType } from '@fluentui/react'
 import type { IColumn } from '@fluentui/react'
 import { Poce_assignmentsService } from '../generated/services/Poce_assignmentsService'
 import { Poce_vehiclesService } from '../generated/services/Poce_vehiclesService'
 import type { Poce_assignments } from '../generated/models/Poce_assignmentsModel'
 import type { Poce_vehicles as Poce_vehiclesType } from '../generated/models/Poce_vehiclesModel'
 import { Poce_assignmentspoce_status } from '../generated/models/Poce_assignmentsModel'
+import { usePageHeader } from '../layout/usePageHeader'
+import { colors, radius, shadow, spacing } from '../theme/tokens'
+import StatusBadge from '../components/StatusBadge'
 
 type AssignmentRecord = {
   id: string
@@ -23,18 +26,25 @@ const statusLabel = (value: string | number | undefined, map: Record<string, str
   return map[String(value)] || String(value)
 }
 
-const VW_BLUE = '#002733'
+type FilterKey = 'all' | 'active' | 'completed'
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'All Assignments' },
+  { key: 'active', label: 'Active' },
+  { key: 'completed', label: 'Completed' },
+]
 
 export const AssignmentsPage: React.FC = () => {
   const navigate = useNavigate()
+  usePageHeader('Assignments', 'All executive vehicle assignments, active and completed')
+
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all')
+  const [filter, setFilter] = useState<FilterKey>('all')
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
 
     Promise.all([
       Poce_vehiclesService.getAll({
@@ -74,53 +84,64 @@ export const AssignmentsPage: React.FC = () => {
       })
       .finally(() => mounted && setLoading(false))
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const filteredAssignments = useMemo(() => {
     if (filter === 'all') return assignments
-    return assignments.filter(a => a.Status.toLowerCase() === filter)
+    return assignments.filter((a) => a.Status.toLowerCase() === filter)
   }, [assignments, filter])
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString()
+    const date = new Date(dateStr)
+    if (Number.isNaN(date.getTime())) return '—'
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
   const columns: IColumn[] = [
     { key: 'ExecutiveName', name: 'Executive Name', fieldName: 'ExecutiveName', minWidth: 150, isResizable: true },
     { key: 'VehicleNumber', name: 'Vehicle Number', fieldName: 'VehicleNumber', minWidth: 120, isResizable: true },
-    { key: 'Model', name: 'Vehicle Model', fieldName: 'Model', minWidth: 100, isResizable: true },
-    { key: 'StartDate', name: 'Start Date', minWidth: 100, isResizable: true, onRender: (item: AssignmentRecord) => formatDate(item.StartDate) },
-    { key: 'ExpectedReturnDate', name: 'Expected Return', minWidth: 110, isResizable: true, onRender: (item: AssignmentRecord) => formatDate(item.ExpectedReturnDate) },
-    { key: 'Status', name: 'Status', fieldName: 'Status', minWidth: 100, isResizable: true },
+    { key: 'Model', name: 'Vehicle Model', fieldName: 'Model', minWidth: 110, isResizable: true },
+    { key: 'StartDate', name: 'Start Date', minWidth: 110, isResizable: true, onRender: (item: AssignmentRecord) => formatDate(item.StartDate) },
+    { key: 'ExpectedReturnDate', name: 'Expected Return', minWidth: 120, isResizable: true, onRender: (item: AssignmentRecord) => formatDate(item.ExpectedReturnDate) },
+    { key: 'Status', name: 'Status', minWidth: 110, isResizable: true, onRender: (item: AssignmentRecord) => <StatusBadge status={item.Status} /> },
   ]
 
   return (
-    <div style={{ padding: 20, background: '#f6f8fa', minHeight: '100vh' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div>
-          <Link href="#/" style={{ textDecoration: 'none' }}>
-            <Text variant="xxLarge" styles={{ root: { color: VW_BLUE, fontWeight: 600 } }}>Executive Mobility Tracker</Text>
-          </Link>
-          <div style={{ marginTop: 4 }}><Text styles={{ root: { color: '#666' } }}>All vehicle assignments</Text></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
+      <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+          {FILTERS.map((f) =>
+            filter === f.key ? (
+              <PrimaryButton key={f.key} text={f.label} onClick={() => setFilter(f.key)} />
+            ) : (
+              <DefaultButton key={f.key} text={f.label} onClick={() => setFilter(f.key)} />
+            )
+          )}
         </div>
-      </header>
+        <DefaultButton text="Assign Vehicle" iconProps={{ iconName: 'Assign' }} onClick={() => navigate('/assign')} />
+      </div>
 
-      <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 16 } }}>
-        <PrimaryButton text="Assign Vehicle" onClick={() => navigate('/assign')} />
-        <DefaultButton text={filter === 'all' ? 'All Assignments' : `All Assignments`} onClick={() => setFilter('all')} />
-        <DefaultButton text={filter === 'active' ? 'Active' : 'Active'} onClick={() => setFilter('active')} />
-        <DefaultButton text={filter === 'completed' ? 'Completed' : 'Completed'} onClick={() => setFilter('completed')} />
-      </Stack>
-
-      <div style={{ background: '#fff', borderRadius: 8, padding: '1rem', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+      <div
+        style={{
+          background: colors.surface,
+          borderRadius: radius.lg,
+          border: `1px solid ${colors.border}`,
+          boxShadow: shadow.sm,
+          padding: spacing.lg,
+        }}
+      >
         {loading ? (
-          <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><Spinner label="Loading assignments..." /></div>
+          <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}>
+            <Spinner size={SpinnerSize.medium} label="Loading assignments…" />
+          </div>
         ) : error ? (
           <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
         ) : filteredAssignments.length === 0 ? (
-          <div style={{ padding: 12 }}><Text styles={{ root: { color: '#666' } }}>No assignments found.</Text></div>
+          <div style={{ padding: 12, color: colors.textSecondary }}>No assignments found.</div>
         ) : (
           <DetailsList
             items={filteredAssignments}

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Link, Text, PrimaryButton, DefaultButton, Spinner, TextField, Dropdown, MessageBar, MessageBarType, Stack, Label } from '@fluentui/react'
+import { PrimaryButton, DefaultButton, Spinner, SpinnerSize, TextField, Dropdown, MessageBar, MessageBarType, Stack, Label } from '@fluentui/react'
 import type { IDropdownOption } from '@fluentui/react'
 import { Poce_vehiclesService } from '../generated/services/Poce_vehiclesService'
 import { Poce_assignmentsService } from '../generated/services/Poce_assignmentsService'
-import type { Poce_vehicles as Poce_vehiclesType } from '../generated/models/Poce_vehiclesModel'
-
-const VW_BLUE = '#002733'
+import type { Poce_vehicles as Poce_vehiclesType, Poce_vehiclesBase } from '../generated/models/Poce_vehiclesModel'
+import type { Poce_assignmentsBase } from '../generated/models/Poce_assignmentsModel'
+import { usePageHeader } from '../layout/usePageHeader'
+import { colors, radius, shadow, spacing } from '../theme/tokens'
 
 type VehicleOption = {
   id: string
@@ -16,6 +17,8 @@ type VehicleOption = {
 
 export const AssignVehiclePage: React.FC = () => {
   const navigate = useNavigate()
+  usePageHeader('Assign Vehicle', 'Create a new executive vehicle assignment')
+
   const [vehicles, setVehicles] = useState<VehicleOption[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -30,7 +33,6 @@ export const AssignVehiclePage: React.FC = () => {
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
 
     Poce_vehiclesService.getAll({
       filter: 'poce_status eq 413450000',
@@ -55,10 +57,12 @@ export const AssignVehiclePage: React.FC = () => {
       })
       .finally(() => mounted && setLoading(false))
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
-  const vehicleOptions: IDropdownOption[] = vehicles.map(v => ({
+  const vehicleOptions: IDropdownOption[] = vehicles.map((v) => ({
     key: v.id,
     text: `${v.VehicleNumber} - ${v.Model}`,
   }))
@@ -88,9 +92,9 @@ export const AssignVehiclePage: React.FC = () => {
     setSaving(true)
 
     try {
-      const selectedVehicle = vehicles.find(v => v.id === selectedVehicleId)
+      const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId)
 
-      const assignmentData = {
+      const assignmentData: Omit<Poce_assignmentsBase, 'poce_assignmentid'> = {
         poce_executivename: executiveName.trim(),
         'poce_Vehicle@odata.bind': `/poce_vehicles(${selectedVehicleId})`,
         poce_startdate: startDate,
@@ -102,11 +106,13 @@ export const AssignVehiclePage: React.FC = () => {
         statecode: 0,
       }
 
-      await Poce_assignmentsService.create(assignmentData as any)
+      await Poce_assignmentsService.create(assignmentData)
 
-      await Poce_vehiclesService.update(selectedVehicleId, {
+      const vehicleUpdate: Partial<Omit<Poce_vehiclesBase, 'poce_vehicleid'>> = {
         poce_status: 413450001,
-      } as any)
+      }
+
+      await Poce_vehiclesService.update(selectedVehicleId, vehicleUpdate)
 
       setSuccess(`Vehicle ${selectedVehicle?.VehicleNumber} successfully assigned to ${executiveName}`)
 
@@ -116,7 +122,7 @@ export const AssignVehiclePage: React.FC = () => {
       setExpectedReturnDate('')
       setPurpose('')
 
-      setVehicles(prev => prev.filter(v => v.id !== selectedVehicleId))
+      setVehicles((prev) => prev.filter((v) => v.id !== selectedVehicleId))
 
       setTimeout(() => {
         navigate('/assignments')
@@ -130,92 +136,100 @@ export const AssignVehiclePage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 20, background: '#f6f8fa', minHeight: '100vh' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div>
-          <Link href="#/" style={{ textDecoration: 'none' }}>
-            <Text variant="xxLarge" styles={{ root: { color: VW_BLUE, fontWeight: 600 } }}>Executive Mobility Tracker</Text>
-          </Link>
-          <div style={{ marginTop: 4 }}><Text styles={{ root: { color: '#666' } }}>Assign a vehicle to an executive</Text></div>
+    <div
+      style={{
+        background: colors.surface,
+        borderRadius: radius.lg,
+        border: `1px solid ${colors.border}`,
+        boxShadow: shadow.sm,
+        padding: spacing.xl,
+        maxWidth: 600,
+      }}
+    >
+      {loading ? (
+        <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}>
+          <Spinner size={SpinnerSize.medium} label="Loading available vehicles…" />
         </div>
-      </header>
+      ) : (
+        <>
+          {error && (
+            <MessageBar messageBarType={MessageBarType.error} styles={{ root: { marginBottom: spacing.lg } }}>
+              {error}
+            </MessageBar>
+          )}
+          {success && (
+            <MessageBar messageBarType={MessageBarType.success} styles={{ root: { marginBottom: spacing.lg } }}>
+              {success}
+            </MessageBar>
+          )}
 
-      <div style={{ background: '#fff', borderRadius: 8, padding: '1.5rem', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', maxWidth: 600 }}>
-        {loading ? (
-          <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><Spinner label="Loading available vehicles..." /></div>
-        ) : (
-          <>
-            {error && <MessageBar messageBarType={MessageBarType.error} styles={{ root: { marginBottom: 16 } }}>{error}</MessageBar>}
-            {success && <MessageBar messageBarType={MessageBarType.success} styles={{ root: { marginBottom: 16 } }}>{success}</MessageBar>}
-
-            {vehicles.length === 0 && !loading ? (
-              <div style={{ padding: 12 }}>
-                <Text styles={{ root: { color: '#666' } }}>No vehicles are currently available for assignment.</Text>
-                <div style={{ marginTop: 12 }}>
-                  <DefaultButton text="Back to Home" onClick={() => navigate('/')} />
-                </div>
+          {vehicles.length === 0 && !loading ? (
+            <div>
+              <div style={{ color: colors.textSecondary }}>No vehicles are currently available for assignment.</div>
+              <div style={{ marginTop: spacing.md }}>
+                <DefaultButton text="Back to Home" onClick={() => navigate('/')} />
               </div>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                <Stack tokens={{ childrenGap: 16 }}>
-                  <TextField
-                    label="Executive Name"
-                    required
-                    value={executiveName}
-                    onChange={(_, v) => setExecutiveName(v || '')}
-                    placeholder="Enter executive name"
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <Stack tokens={{ childrenGap: 16 }}>
+                <TextField
+                  label="Executive Name"
+                  required
+                  value={executiveName}
+                  onChange={(_, v) => setExecutiveName(v || '')}
+                  placeholder="Enter executive name"
+                  disabled={saving}
+                />
+
+                <div>
+                  <Label required>Select Vehicle</Label>
+                  <Dropdown
+                    placeholder="Select a vehicle"
+                    options={vehicleOptions}
+                    selectedKey={selectedVehicleId}
+                    onChange={(_, option) => setSelectedVehicleId(option?.key as string)}
                     disabled={saving}
                   />
+                </div>
 
-                  <div>
-                    <Label required>Select Vehicle</Label>
-                    <Dropdown
-                      placeholder="Select a vehicle"
-                      options={vehicleOptions}
-                      selectedKey={selectedVehicleId}
-                      onChange={(_, option) => setSelectedVehicleId(option?.key as string)}
-                      disabled={saving}
-                    />
-                  </div>
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(_, v) => setStartDate(v || '')}
+                  disabled={saving}
+                />
 
-                  <TextField
-                    label="Start Date"
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(_, v) => setStartDate(v || '')}
-                    disabled={saving}
-                  />
+                <TextField
+                  label="Expected Return Date"
+                  type="date"
+                  required
+                  value={expectedReturnDate}
+                  onChange={(_, v) => setExpectedReturnDate(v || '')}
+                  disabled={saving}
+                />
 
-                  <TextField
-                    label="Expected Return Date"
-                    type="date"
-                    required
-                    value={expectedReturnDate}
-                    onChange={(_, v) => setExpectedReturnDate(v || '')}
-                    disabled={saving}
-                  />
+                <TextField
+                  label="Purpose"
+                  multiline
+                  rows={3}
+                  value={purpose}
+                  onChange={(_, v) => setPurpose(v || '')}
+                  placeholder="Purpose of assignment (optional)"
+                  disabled={saving}
+                />
 
-                  <TextField
-                    label="Purpose"
-                    multiline
-                    rows={3}
-                    value={purpose}
-                    onChange={(_, v) => setPurpose(v || '')}
-                    placeholder="Purpose of assignment (optional)"
-                    disabled={saving}
-                  />
-
-                  <Stack horizontal tokens={{ childrenGap: 8 }}>
-                    <PrimaryButton type="submit" text={saving ? 'Assigning...' : 'Assign Vehicle'} disabled={saving} />
-                    <DefaultButton text="Cancel" onClick={() => navigate('/')} disabled={saving} />
-                  </Stack>
+                <Stack horizontal tokens={{ childrenGap: 8 }}>
+                  <PrimaryButton type="submit" text={saving ? 'Assigning...' : 'Assign Vehicle'} disabled={saving} />
+                  <DefaultButton text="Cancel" onClick={() => navigate('/')} disabled={saving} />
                 </Stack>
-              </form>
-            )}
-          </>
-        )}
-      </div>
+              </Stack>
+            </form>
+          )}
+        </>
+      )}
     </div>
   )
 }

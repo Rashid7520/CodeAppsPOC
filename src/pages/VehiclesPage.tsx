@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Link, Text, DefaultButton, Spinner, DetailsList, DetailsListLayoutMode, SelectionMode, MessageBar, MessageBarType, Stack } from '@fluentui/react'
+import { DefaultButton, PrimaryButton, Spinner, SpinnerSize, DetailsList, DetailsListLayoutMode, SelectionMode, MessageBar, MessageBarType } from '@fluentui/react'
 import type { IColumn } from '@fluentui/react'
 import { Poce_vehiclesService } from '../generated/services/Poce_vehiclesService'
 import type { Poce_vehicles as Poce_vehiclesType } from '../generated/models/Poce_vehiclesModel'
 import { Poce_vehiclespoce_status } from '../generated/models/Poce_vehiclesModel'
+import { usePageHeader } from '../layout/usePageHeader'
+import { colors, radius, shadow, spacing } from '../theme/tokens'
+import KpiCard from '../components/KpiCard'
+import StatusBadge from '../components/StatusBadge'
+import '../styles/dashboard.css'
 
 type VehicleRecord = {
   id: string
@@ -17,17 +22,24 @@ const statusLabel = (value: string | number | undefined, map: Record<string, str
   return map[String(value)] || String(value)
 }
 
-const VW_BLUE = '#002733'
+type FilterKey = 'all' | 'available' | 'assigned'
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'All Vehicles' },
+  { key: 'available', label: 'Available' },
+  { key: 'assigned', label: 'Assigned' },
+]
 
 export const VehiclesPage: React.FC = () => {
+  usePageHeader('Vehicle Fleet', 'Manage and track every vehicle in the fleet')
+
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'available' | 'assigned'>('all')
+  const [filter, setFilter] = useState<FilterKey>('all')
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
 
     Poce_vehiclesService.getAll({
       select: ['poce_vehicleid', 'poce_vehiclename', 'poce_model', 'poce_status'],
@@ -53,63 +65,68 @@ export const VehiclesPage: React.FC = () => {
       })
       .finally(() => mounted && setLoading(false))
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const filteredVehicles = useMemo(() => {
     if (filter === 'all') return vehicles
-    return vehicles.filter(v => v.Status.toLowerCase() === filter)
+    return vehicles.filter((v) => v.Status.toLowerCase() === filter)
   }, [vehicles, filter])
 
   const columns: IColumn[] = [
     { key: 'VehicleNumber', name: 'Vehicle Number', fieldName: 'VehicleNumber', minWidth: 150, isResizable: true },
     { key: 'Model', name: 'Model', fieldName: 'Model', minWidth: 150, isResizable: true },
-    { key: 'Status', name: 'Status', fieldName: 'Status', minWidth: 100, isResizable: true },
+    {
+      key: 'Status',
+      name: 'Status',
+      fieldName: 'Status',
+      minWidth: 120,
+      isResizable: true,
+      onRender: (item: VehicleRecord) => <StatusBadge status={item.Status} />,
+    },
   ]
 
   const totalVehicles = vehicles.length
-  const availableCount = vehicles.filter(v => v.Status === 'Available').length
-  const assignedCount = vehicles.filter(v => v.Status === 'Assigned').length
+  const availableCount = vehicles.filter((v) => v.Status === 'Available').length
+  const assignedCount = vehicles.filter((v) => v.Status === 'Assigned').length
 
   return (
-    <div style={{ padding: 20, background: '#f6f8fa', minHeight: '100vh' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div>
-          <Link href="#/" style={{ textDecoration: 'none' }}>
-            <Text variant="xxLarge" styles={{ root: { color: VW_BLUE, fontWeight: 600 } }}>Executive Mobility Tracker</Text>
-          </Link>
-          <div style={{ marginTop: 4 }}><Text styles={{ root: { color: '#666' } }}>Vehicle fleet management</Text></div>
-        </div>
-      </header>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xl }}>
+      <div className="kpi-grid">
+        <KpiCard title="Total" value={totalVehicles} icon="Car" accentColor={colors.brand} loading={loading} />
+        <KpiCard title="Available" value={availableCount} icon="CompletedSolid" accentColor={colors.success} loading={loading} />
+        <KpiCard title="Assigned" value={assignedCount} icon="ContactCard" accentColor={colors.warning} loading={loading} />
+      </div>
 
-      <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { marginBottom: 16 } }}>
-        <div style={{ background: '#fff', borderRadius: 8, padding: '1rem', minWidth: 120, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <Text variant="small" styles={{ root: { color: '#666' } }}>Total</Text>
-          <div><Text style={{ fontSize: 24, fontWeight: 600, color: VW_BLUE }}>{totalVehicles}</Text></div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 8, padding: '1rem', minWidth: 120, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <Text variant="small" styles={{ root: { color: '#666' } }}>Available</Text>
-          <div><Text style={{ fontSize: 24, fontWeight: 600, color: '#107C10' }}>{availableCount}</Text></div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 8, padding: '1rem', minWidth: 120, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <Text variant="small" styles={{ root: { color: '#666' } }}>Assigned</Text>
-          <div><Text style={{ fontSize: 24, fontWeight: 600, color: '#D83B01' }}>{assignedCount}</Text></div>
-        </div>
-      </Stack>
+      <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap' }}>
+        {FILTERS.map((f) =>
+          filter === f.key ? (
+            <PrimaryButton key={f.key} text={f.label} onClick={() => setFilter(f.key)} />
+          ) : (
+            <DefaultButton key={f.key} text={f.label} onClick={() => setFilter(f.key)} />
+          )
+        )}
+      </div>
 
-      <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 16 } }}>
-        <DefaultButton text={filter === 'all' ? 'All Vehicles' : 'All Vehicles'} onClick={() => setFilter('all')} />
-        <DefaultButton text={filter === 'available' ? 'Available' : 'Available'} onClick={() => setFilter('available')} />
-        <DefaultButton text={filter === 'assigned' ? 'Assigned' : 'Assigned'} onClick={() => setFilter('assigned')} />
-      </Stack>
-
-      <div style={{ background: '#fff', borderRadius: 8, padding: '1rem', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+      <div
+        style={{
+          background: colors.surface,
+          borderRadius: radius.lg,
+          border: `1px solid ${colors.border}`,
+          boxShadow: shadow.sm,
+          padding: spacing.lg,
+        }}
+      >
         {loading ? (
-          <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><Spinner label="Loading vehicles..." /></div>
+          <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}>
+            <Spinner size={SpinnerSize.medium} label="Loading vehicles…" />
+          </div>
         ) : error ? (
           <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
         ) : filteredVehicles.length === 0 ? (
-          <div style={{ padding: 12 }}><Text styles={{ root: { color: '#666' } }}>No vehicles found.</Text></div>
+          <div style={{ padding: 12, color: colors.textSecondary }}>No vehicles found.</div>
         ) : (
           <DetailsList
             items={filteredVehicles}

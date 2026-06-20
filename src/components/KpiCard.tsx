@@ -1,27 +1,76 @@
-import React from 'react'
-import { Stack, Text } from '@fluentui/react'
+import React from 'react';
+import { Icon, Text } from '@fluentui/react';
+import { colors, radius, shadow, spacing } from '../theme/tokens';
 
-interface KpiCardProps {
-  title: string
-  value: string | number
-  accentColor?: string
+export interface KpiCardProps {
+  title: string;
+  value: string | number;
+  icon: string;
+  accentColor?: string;
+  loading?: boolean;
 }
 
-export const KpiCard: React.FC<KpiCardProps> = ({ title, value, accentColor }) => {
+/**
+ * Reusable KPI summary card. Drop into any dashboard grid — accentColor
+ * lets each metric have its own visual identity (e.g. green for "available").
+ */
+export const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, accentColor, loading }) => {
+  const accent = accentColor || colors.brand;
+
   return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 8,
-      padding: '1rem',
-      minWidth: 160,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
-    }}>
-      <Stack tokens={{ childrenGap: 6 }}>
-        <Text variant="small" styles={{ root: { color: '#666' } }}>{title}</Text>
-        <Text style={{ fontSize: 28, fontWeight: 600, color: accentColor || '#002733' }}>{value}</Text>
-      </Stack>
-    </div>
-  )
-}
+    <div
+      style={{
+        background: colors.surface,
+        borderRadius: radius.lg,
+        padding: spacing.xl,
+        boxShadow: shadow.md,
+        border: `1px solid ${colors.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: spacing.lg,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: radius.md,
+          background: `${accent}1A`,
+          color: accent,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <Icon iconName={icon} styles={{ root: { fontSize: 22 } }} />
+      </div>
 
-export default KpiCard
+      <div style={{ minWidth: 0 }}>
+        <Text
+          variant="small"
+          styles={{ root: { color: colors.textSecondary, fontWeight: 600, letterSpacing: '0.2px', display: 'block' } }}
+        >
+          {title.toUpperCase()}
+        </Text>
+        <Text
+          styles={{
+            root: {
+              fontSize: 30,
+              fontWeight: 700,
+              color: colors.textPrimary,
+              lineHeight: 1.2,
+              display: 'block',
+              marginTop: 2,
+            },
+          }}
+        >
+          {loading ? '—' : value}
+        </Text>
+      </div>
+    </div>
+  );
+};
+
+export default KpiCard;

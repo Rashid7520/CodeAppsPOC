@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Persona, PersonaSize, Stack, PrimaryButton, DefaultButton, Text } from '@fluentui/react'
+import { Icon, Text } from '@fluentui/react'
 import { Poce_assignmentsService } from '../generated/services/Poce_assignmentsService'
 import { Poce_vehiclesService } from '../generated/services/Poce_vehiclesService'
 import type { Poce_assignments } from '../generated/models/Poce_assignmentsModel'
@@ -9,6 +9,10 @@ import { Poce_assignmentspoce_status } from '../generated/models/Poce_assignment
 import { Poce_vehiclespoce_status } from '../generated/models/Poce_vehiclesModel'
 import KpiCard from '../components/KpiCard'
 import DashboardWidget from '../components/DashboardWidget'
+import StatusBadge from '../components/StatusBadge'
+import { usePageHeader } from '../layout/usePageHeader'
+import { colors } from '../theme/tokens'
+import '../styles/dashboard.css'
 
 type DashboardVehicle = {
   id: string
@@ -32,10 +36,17 @@ const statusLabel = (value: string | number | undefined, map: Record<string, str
   return map[String(value)] || String(value)
 }
 
-const VW_BLUE = '#002733'
+const formatDate = (value: string) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate()
+  usePageHeader('Executive Mobility Tracker', 'Track executive vehicle assignments and availability')
+
   const [vehicles, setVehicles] = useState<DashboardVehicle[]>([])
   const [assignments, setAssignments] = useState<DashboardAssignment[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,7 +54,6 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     let mounted = true
-    setLoading(true)
 
     Promise.all([
       Poce_vehiclesService.getAll({
@@ -90,77 +100,94 @@ export const HomePage: React.FC = () => {
       })
       .finally(() => mounted && setLoading(false))
 
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const totalVehicles = vehicles.length
-  const availableVehicles = vehicles.filter(v => v.Status === 'Available').length
-  const assignedVehicles = vehicles.filter(v => v.Status === 'Assigned').length
+  const availableVehicles = vehicles.filter((v) => v.Status === 'Available').length
+  const assignedVehicles = vehicles.filter((v) => v.Status === 'Assigned').length
 
-  const activeAssignments = useMemo(() => assignments.filter(a => a.Status === 'Active').slice(0, 5), [assignments])
-  const availableList = useMemo(() => vehicles.filter(v => v.Status === 'Available').slice(0, 5), [vehicles])
+  const activeAssignments = useMemo(() => assignments.filter((a) => a.Status === 'Active').slice(0, 5), [assignments])
+  const availableList = useMemo(() => vehicles.filter((v) => v.Status === 'Available').slice(0, 5), [vehicles])
 
   return (
-    <div style={{ padding: 20, background: '#f6f8fa', minHeight: '100vh' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div>
-          <Text variant="xxLarge" styles={{ root: { color: VW_BLUE, fontWeight: 600 } }}>Executive Mobility Tracker</Text>
-          <div style={{ marginTop: 4 }}><Text styles={{ root: { color: '#666' } }}>Track executive vehicle assignments and availability</Text></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* KPI cards */}
+      <section>
+        <p className="section-title">Fleet Overview</p>
+        <div className="kpi-grid">
+          <KpiCard title="Total Vehicles" value={totalVehicles} icon="Car" accentColor={colors.brand} loading={loading} />
+          <KpiCard title="Available Vehicles" value={availableVehicles} icon="CompletedSolid" accentColor={colors.success} loading={loading} />
+          <KpiCard title="Assigned Vehicles" value={assignedVehicles} icon="ContactCard" accentColor={colors.warning} loading={loading} />
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ textAlign: 'right' }}>
-            <Text>Rashid Khan</Text>
-            <Text styles={{ root: { color: '#666', fontSize: 12 } }}>Administrator</Text>
-          </div>
-          <Persona text="RK" size={PersonaSize.size40} />
+      </section>
+
+      {/* Quick actions */}
+      <section>
+        <p className="section-title">Quick Actions</p>
+        <div className="quick-actions">
+          <button type="button" className="quick-action-card" onClick={() => navigate('/assign')}>
+            <span className="quick-action-icon">
+              <Icon iconName="Assign" />
+            </span>
+            <span>
+              <span className="quick-action-label" style={{ display: 'block' }}>Assign Vehicle</span>
+              <span className="quick-action-sub">Create a new executive assignment</span>
+            </span>
+          </button>
+
+          <button type="button" className="quick-action-card" onClick={() => navigate('/assignments')}>
+            <span className="quick-action-icon">
+              <Icon iconName="ClipboardList" />
+            </span>
+            <span>
+              <span className="quick-action-label" style={{ display: 'block' }}>View Assignments</span>
+              <span className="quick-action-sub">Browse all active and past assignments</span>
+            </span>
+          </button>
         </div>
-      </header>
+      </section>
 
-      <Stack horizontal tokens={{ childrenGap: 12 }} styles={{ root: { marginBottom: 16 } }}>
-        <KpiCard title="Total Vehicles" value={loading ? '—' : totalVehicles} accentColor={VW_BLUE} />
-        <KpiCard title="Available Vehicles" value={loading ? '—' : availableVehicles} accentColor="#107C10" />
-        <KpiCard title="Assigned Vehicles" value={loading ? '—' : assignedVehicles} accentColor="#D83B01" />
-      </Stack>
+      {/* Widgets */}
+      <section className="widgets-grid">
+        <DashboardWidget<DashboardAssignment>
+          title="Current Vehicle Assignments"
+          items={activeAssignments}
+          loading={loading}
+          error={error}
+          emptyMessage="No active vehicle assignments found."
+          viewAllLink="/assignments"
+          getKey={(item) => item.id}
+          columns={[
+            { key: 'ExecutiveName', name: 'Executive Name', minWidth: 140 },
+            { key: 'VehicleName', name: 'Vehicle Number', minWidth: 120 },
+            { key: 'Model', name: 'Vehicle Model', minWidth: 120 },
+            { key: 'StartDate', name: 'Start Date', minWidth: 110, render: (r) => formatDate(r.StartDate) },
+            { key: 'ExpectedReturnDate', name: 'Expected Return Date', minWidth: 140, render: (r) => formatDate(r.ExpectedReturnDate) },
+            { key: 'Status', name: 'Status', minWidth: 100, render: (r) => <StatusBadge status={r.Status} /> },
+          ]}
+        />
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <PrimaryButton text="Assign Vehicle" onClick={() => navigate('/assign')} />
-        <DefaultButton text="View Assignments" onClick={() => navigate('/assignments')} />
-      </div>
+        <DashboardWidget<DashboardVehicle>
+          title="Available Vehicles"
+          items={availableList}
+          loading={loading}
+          error={error}
+          emptyMessage="No vehicles are currently available."
+          viewAllLink="/vehicles"
+          getKey={(item) => item.id}
+          columns={[
+            { key: 'VehicleNumber', name: 'Vehicle Number', minWidth: 130 },
+            { key: 'Model', name: 'Model', minWidth: 130 },
+          ]}
+        />
+      </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 12 }}>
-        <div>
-          <DashboardWidget
-            title="Current Vehicle Assignments"
-            items={activeAssignments}
-            loading={loading}
-            error={error}
-            emptyMessage="No active vehicle assignments found."
-            viewAllLink="#/assignments"
-            columns={[
-              { key: 'ExecutiveName', name: 'Executive Name', render: (r: DashboardAssignment) => r.ExecutiveName },
-              { key: 'VehicleName', name: 'Vehicle Number', render: (r: DashboardAssignment) => r.VehicleName },
-              { key: 'Model', name: 'Vehicle Model', render: (r: DashboardAssignment) => r.Model },
-              { key: 'StartDate', name: 'Start Date', render: (r: DashboardAssignment) => new Date(r.StartDate).toLocaleDateString() },
-              { key: 'ExpectedReturnDate', name: 'Expected Return', render: (r: DashboardAssignment) => new Date(r.ExpectedReturnDate).toLocaleDateString() },
-            ]}
-          />
-        </div>
-
-        <div>
-          <DashboardWidget
-            title="Available Vehicles"
-            items={availableList}
-            loading={loading}
-            error={error}
-            emptyMessage="No vehicles are currently available."
-            viewAllLink="#/vehicles"
-            columns={[
-              { key: 'VehicleNumber', name: 'Vehicle Number', render: (v: DashboardVehicle) => v.VehicleNumber },
-              { key: 'Model', name: 'Model', render: (v: DashboardVehicle) => v.Model },
-            ]}
-          />
-        </div>
-      </div>
+      {error && !loading && (
+        <Text styles={{ root: { color: colors.danger, fontSize: 13 } }}>{error}</Text>
+      )}
     </div>
   )
 }
